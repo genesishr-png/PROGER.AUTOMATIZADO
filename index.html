@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Desempenho - Multi-Setores</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para os gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons para os ícones dos cartões -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        canvas { max-height: 300px; }
+        .tab-button { transition: all 0.2s ease-in-out; border-bottom: 3px solid transparent; }
+        .tab-button.active { border-color: #4338ca; color: #4338ca; font-weight: 600; }
+        .sub-tab-button { transition: all 0.2s ease-in-out; border-bottom: 2px solid transparent; }
+        .sub-tab-button.active { border-color: #f59e0b; color: #f59e0b; font-weight: 600; }
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        .collapsible-content.expanded { max-height: 1000px; }
+        .lucide-chevron-down { transition: transform 0.3s ease-in-out; }
+        .lucide-chevron-down.rotate-180 { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 text-gray-800">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 id="painel-title" class="text-3xl sm:text-4xl font-bold text-indigo-700">Carregando Painel...</h1>
+            <p class="mt-2 text-lg text-gray-600">Visualização de processos e desempenho da equipe</p>
+            <div id="status-message" class="mt-4 text-sm font-medium"></div>
+        </header>
+
+        <div class="flex justify-center space-x-4 mb-8 overflow-x-auto pb-2">
+            <button id="tab-medica" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg active whitespace-nowrap">Assistência Médica</button>
+            <button id="tab-licitacao" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Licitação e Contratos</button>
+            <button id="tab-previdencia" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Previdência</button>
+            <button id="tab-contencioso" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Contencioso</button>
+        </div>
+        
+        <div id="loading-container" class="text-center p-10"><p class="text-2xl animate-pulse text-indigo-600">Buscando dados das planilhas...</p></div>
+        <div id="dashboard-container" class="hidden"></div>
+    </div>
+
+    <script>
+        // --- PASSO 1: COLE A URL DO SEU SCRIPT AQUI ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbzQuJmReTcn6sNu3k1n0sbCI8_h9-NCvGo2-I2UCi2Fe5wEoIWy43rD9mBKVLHaeMMH/exec"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        let dashboardsData = {};
+        let chartInstances = {};
+
+        // --- DADOS MANUAIS ---
+        // EDITE AS INFORMAÇÕES DE AUSÊNCIAS AQUI
+        const manualData = {
+            medica: {
+                title: 'Painel de Desempenho da Divisão de Assistência Médica',
+                ausencias: [
+                    { funcionario: 'nélio', motivo: 'Férias', inicio: '01/10/2025', fim: '15/10/2025' },
+                    { funcionario: 'Blandina', motivo: 'Congresso de Saúde', inicio: '22/09/2025', fim: '26/09/2025' },
+                    { funcionario: 'Renata C.', motivo: 'Férias', inicio: '03/11/2025', fim: '17/11/2025' }
+                ]
+            },
+            licitacao: {
+                title: 'Painel de Desempenho da Divisão de Licitação e Contratos',
+                priorityNote: "Os últimos 5 processos realizados em julho foram tratados com prioridade por determinação da presidência. Isso impactou o cronograma dos demais processos que estavam na fila de análise.",
+                ausencias: [
+                    { funcionario: '', motivo: '', inicio: '', fim: '' }
+                ]
+            },
+            previdencia: { 
+                title: 'Painel de Desempenho da Divisão de Processos Previdenciários',
+                ausencias: [
+                    { funcionario: 'Ilza', motivo: 'Férias', inicio: '28/07/2025', fim: '31/07/2025' }
+                ]
+            },
+            contencioso: {
+                title: 'Painel de Desempenho da Divisão Administrativa e Contenciosa',
+                ausencias: [
+                    { funcionario: 'Denise', motivo: 'Férias', inicio: '01/12/2025', fim: '15/12/2025' }
+                ],
+                assistenciaJudicial: {
+                    total: 36,
+                    demandsList: [
+                        { description: 'Cirurgia cardíaca', value: 150000, process: '7017622-10.2025.822.0001' },
+                        { description: 'Isenção por acidente de trabalho', value: 62469.64, process: '7041996-90.2025.822.0001' },
+                        { description: 'Tratamento de quimioterapia', value: 202298.12, process: '7043114-04.2025.822.0001' },
+                    ],
+                    details: `<p>Entre <b>janeiro</b> e <b>julho de 2025</b>, o IPAM registrou a citação em <b>36 novas demandas judiciais</b>.</p><h4 class="text-md font-semibold mt-4 mb-2">Assuntos mais demandados:</h4><ul class="list-disc list-inside space-y-1"><li><b>Assistência à Saúde:</b><ul class="list-circle list-inside ml-4"><li>Negativa de cobertura.</li><li>Isenção do elemento moderador decorrente de acidente de trabalho.</li></ul></li><li><b>Previdência:</b><ul class="list-circle list-inside ml-4"><li>Isenção de Imposto de Renda.</li><li>Aposentadoria por invalidez.</li></ul></li></ul>`
+                },
+                precatorios: {
+                    total2025: { value: 270657.56, count: 4 },
+                    total2026: { value: 446790.57, count: 4 },
+                    total2027: { value: 1816722.02, count: 43 },
+                    list2025: [{ ref: '0807728-70.2023.822.0000', fund: 'Previdenciário' },{ ref: '0812024-38.2023.822.0000', fund: 'Assistencial' },{ ref: '0804715-28.2024.822.0001', fund: 'Previdenciário' },{ ref: '0804714-44.2024.822.0000', fund: 'Previdenciário' }],
+                    list2026: [{ ref: '0807072-79.2024.822.0000', fund: 'Previdenciário' },{ ref: '0811649-03.2024.822.0000', fund: 'Previdenciário' },{ ref: '0800212-28.2025.822.0000', fund: 'Previdenciário' },{ ref: '0802187-75.2025.822.0000', fund: 'Previdenciário' }],
+                    list2027: [{ ref: 'Ação coletiva n. 0014768-22.2012.822.0001', fund: 'Assistência', details: 'Possui 52 beneficiários e um valor total de R$ 2.255.327,48' }],
+                    prognostico: [{ process: '0005007-30.2013.822.0001', nature: 'Ação coletiva com 55 beneficiários', value: 2781854.13, fund: 'Assistência', previsao: '2027' },{ process: '7026059-79.2021.822.0001', nature: 'Processo com 8 beneficiários que não renunciaram ao excedente para RPV', value: 151292.08, fund: 'Previdenciário', previsao: '2027' },{ process: '7007321-43.2021.822.0001', nature: '', value: 50810.61, fund: 'Previdenciário', previsao: 'Futuro (a ser definido)' }],
+                    regras: { cnj: 'Resolução CNJ nº 303', detalhes: ['Ofícios expedidos <b>até 02 de abril</b>: A inscrição do precatório ocorrerá no ano seguinte ao da expedição.','Ofícios expedidos <b>após 02 de abril</b>: A inscrição do precatório ocorrerá no segundo ano subsequente à expedição.'] }
+                },
+                rpvs: {
+                    totalPaid: { count: 295, value: 2379042.23 },
+                    pending: { count: 1, value: 135906.23, process: '7026059-79.2021.822.0001', motivo: 'Inconsistência dos dados dos Beneficiários', status: 'Aguardando ordem judicial para inscrição' }
+                }
+            }
+        };
+        
+        // --- FUNÇÕES AUXILIARES ---
+        function createChart(id, type, data, options) {
+            const ctx = document.getElementById(id)?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances[id]) chartInstances[id].destroy();
+            chartInstances[id] = new Chart(ctx, { type, data, options });
+        }
+
+        function toggleCollapsible(id) {
+            const element = document.getElementById(id);
+            const chevron = element.previousElementSibling.querySelector('.lucide-chevron-down');
+            element.classList.toggle('expanded');
+            if (chevron) chevron.classList.toggle('rotate-180');
+        }
+
+        function setActiveSubTabButtons(activeId) {
+            document.querySelectorAll('.sub-tab-button').forEach(button => button.classList.remove('active'));
+            document.getElementById(activeId).classList.add('active');
+        }
+        
+        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+        function renderStandardDashboard(data, containerId) {
+            const container = document.getElementById(containerId);
+            if (!data || !data.kpis || data.kpis.concluidos === null) {
+                container.innerHTML = `<div class="bg-white p-8 rounded-lg shadow-md text-center text-gray-500"><p class="font-semibold">Dados de desempenho para este setor ainda não foram configurados na planilha.</p><p class="text-sm mt-2">Por favor, configure o ID e os intervalos de células no Google Apps Script para automatizar esta visualização.</p></div>`;
+                return;
+            }
+            const { kpis, graficoMensal, desempenhoEquipe, ausencias } = data;
+            const totalGeral = (kpis.concluidos || 0) + (kpis.emAndamento || 0);
+
+            const kpisHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="check-circle" class="text-green-500"></div><div><h3 class="text-xl font-semibold">Concluídos</h3><p class="text-3xl font-bold text-gray-700">${kpis.concluidos}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="clock" class="text-yellow-500"></div><div><h3 class="text-xl font-semibold">Em Andamento</h3><p class="text-3xl font-bold text-gray-700">${kpis.emAndamento}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="users" class="text-blue-500"></div><div><h3 class="text-xl font-semibold">Total de Processos</h3><p class="text-3xl font-bold text-gray-700">${totalGeral}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="file-text" class="text-purple-500"></div><div><h3 class="text-xl font-semibold">Média de Duração</h3><p class="text-3xl font-bold text-gray-700">${kpis.mediaDuracao} dias</p></div></div>
+                </div>`;
+            
+            const priorityNoteHtml = data.priorityNote ? `<div class="flex items-center p-4 mb-8 bg-yellow-100 rounded-lg shadow-md space-x-4"><div data-lucide="alert-triangle" class="text-yellow-600"></div><p class="text-sm text-yellow-800 font-semibold">${data.priorityNote}</p></div>` : '';
+            
+            const chartsAndTablesHtml = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Processos por Mês</h3><canvas id="monthlyChart"></canvas></div>
+                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Desempenho da Equipe</h3><canvas id="employeeChart"></canvas></div>
+                </div>
+                <div class="mt-8 bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Resumo por Funcionário</h3><div class="overflow-x-auto"><table class="w-full table-auto text-sm">
+                    <thead class="bg-gray-100 text-left">
+                        <tr>
+                            <th class="p-3 font-semibold">Funcionário</th>
+                            <th class="p-3 font-semibold">Encaminhados</th>
+                            <th class="p-3 font-semibold">Concluídos</th>
+                            <th class="p-3 font-semibold">Em Andamento</th>
+                            <th class="p-3 font-semibold">Média Duração (dias)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${desempenhoEquipe.map(e => `<tr><td class="p-3">${e.name}</td><td class="p-3">${e.sent}</td><td class="p-3">${e.completed}</td><td class="p-3">${e.inProgress}</td><td class="p-3">${e.avgDuration}</td></tr>`).join('')}
+                    </tbody>
+                </table></div></div>`;
+            
+            const ausenciasHtml = (ausencias && ausencias.length > 0) ? `
+                <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Férias e Ausências Programadas</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-auto text-sm">
+                            <thead class="bg-gray-100 text-left">
+                                <tr>
+                                    <th class="p-3 font-semibold">Funcionário</th>
+                                    <th class="p-3 font-semibold">Motivo</th>
+                                    <th class="p-3 font-semibold">Período</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${ausencias.map(a => `<tr class="border-b last:border-b-0"><td class="p-3">${a.funcionario}</td><td class="p-3">${a.motivo}</td><td class="p-3">${a.inicio} - ${a.fim}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>` : '';
+
+            container.innerHTML = kpisHtml + priorityNoteHtml + chartsAndTablesHtml + ausenciasHtml;
+            
+            if (graficoMensal?.labels?.length > 0) {
+                createChart('monthlyChart', 'bar', { labels: graficoMensal.labels, datasets: [{ label: 'Processos', data: graficoMensal.data.map(d => Number(d) || 0), backgroundColor: '#6d28d9', borderRadius: 5 }] }, { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+            }
+            if (desempenhoEquipe?.length > 0) {
+                createChart('employeeChart', 'bar', { labels: desempenhoEquipe.map(e => e.name), datasets: [{ label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a' }, { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a' }, { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a' }] }, { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } });
+            }
+        }
+
+        function renderContenciosoDashboard(data) {
+             const container = document.getElementById('dashboard-container');
+             container.innerHTML = `
+                <div class="flex justify-center space-x-4 mb-8 overflow-x-auto pb-2">
+                    <button id="sub-tab-precatorios" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg active whitespace-nowrap">Precatórios</button>
+                    <button id="sub-tab-rpvs" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">RPVs</button>
+                    <button id="sub-tab-desempenho" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Desempenho Geral</button>
+                    <button id="sub-tab-assistencia-judicial" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Demandas da Assistência Médica</button>
+                </div>
+                <div id="contencioso-content"></div>`;
+            
+            document.getElementById('sub-tab-precatorios').addEventListener('click', () => { renderPrecatorios(data.precatorios); setActiveSubTabButtons('sub-tab-precatorios'); });
+            document.getElementById('sub-tab-rpvs').addEventListener('click', () => { renderRPVs(data.rpvs); setActiveSubTabButtons('sub-tab-rpvs'); });
+            document.getElementById('sub-tab-desempenho').addEventListener('click', () => { renderStandardDashboard(data, 'contencioso-content'); setActiveSubTabButtons('sub-tab-desempenho'); });
+            document.getElementById('sub-tab-assistencia-judicial').addEventListener('click', () => { renderAssistenciaJudicial(data.assistenciaJudicial); setActiveSubTabButtons('sub-tab-assistencia-judicial'); });
+
+            renderPrecatorios(data.precatorios);
+        }
+
+        function renderPrecatorios(d) {
+            const content = document.getElementById('contencioso-content');
+            if (!content) return;
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-check" class="text-green-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2025</h3><p class="text-3xl font-bold">${d.total2025.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2025.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-plus" class="text-blue-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2026</h3><p class="text-3xl font-bold">${d.total2026.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2026.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-x" class="text-purple-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2027</h3><p class="text-3xl font-bold">${d.total2027.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2027.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                </div>
+                <div class="space-y-4">
+                    ${createCollapsibleSection('precatorios-2025', 'Detalhes dos Precatórios 2025', createTableHtml(['Referência', 'Fundo'], d.list2025))}
+                    ${createCollapsibleSection('precatorios-2026', 'Detalhes dos Precatórios 2026', createTableHtml(['Referência', 'Fundo'], d.list2026))}
+                    ${createCollapsibleSection('precatorios-prognostico', 'Prognóstico de Novas Inscrições', createTableHtml(['Processo', 'Natureza', 'Valor', 'Fundo', 'Previsão'], d.prognostico, true))}
+                    ${createCollapsibleSection('precatorios-regras', 'Regras de Pagamento de Precatórios', `<div class="prose max-w-none mt-4 text-gray-700 leading-relaxed"><p class="font-semibold">${d.regras.cnj}</p><ul class="list-disc list-inside space-y-1">${d.regras.detalhes.map(detail => `<li>${detail}</li>`).join('')}</ul></div>`)}
+                </div>`;
+        }
+
+        function renderRPVs(d) {
+            const content = document.getElementById('contencioso-content');
+            if(!content) return;
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="banknote" class="text-green-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">RPVs Pagos (2025)</h3><p class="text-3xl font-bold">${d.totalPaid.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.totalPaid.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="alert-triangle" class="text-red-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">RPVs Pendentes (2025)</h3><p class="text-3xl font-bold">${d.pending.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.pending.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Detalhes do RPV Pendente</h3><div class="prose max-w-none text-gray-700"><p><b>Referência:</b> ${d.pending.process}</p><p><b>Motivo:</b> ${d.pending.motivo}</p><p><b>Status:</b> ${d.pending.status}</p></div></div>`;
+        }
+        
+        function renderAssistenciaJudicial(d) {
+            const content = document.getElementById('contencioso-content');
+            if(!content) return;
+            const totalValue = d.demandsList.reduce((sum, item) => sum + item.value, 0);
+            content.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-md p-6"><div class="flex items-center space-x-4"><div data-lucide="dollar-sign" class="text-red-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Risco Total</h3><p class="text-3xl font-bold">R$ ${totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p></div></div></div>
+                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                        <button class="flex items-center justify-between w-full text-left" onclick="toggleCollapsible('judicial-demands-details')">
+                            <h3 class="text-xl font-bold text-gray-700">Novas Demandas Judiciais</h3>
+                            <div class="flex items-center space-x-2"><span class="text-3xl font-bold text-purple-500">${d.total}</span><div data-lucide="chevron-down" class="lucide-chevron-down text-purple-500"></div></div>
+                        </button>
+                        <div id="judicial-demands-details" class="collapsible-content"><div class="prose max-w-none mt-4 text-gray-700 leading-relaxed">${d.details}</div></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Débitos Judiciais Confirmados</h3>${createTableHtml(['Descrição', 'Valor', 'Processo'], d.demandsList, true)}</div>`;
+        }
+
+        function createCollapsibleSection(id, title, content) {
+            return `<div class="bg-white rounded-lg shadow-md p-6">
+                        <button class="flex items-center justify-between w-full text-left" onclick="toggleCollapsible('${id}')">
+                            <h3 class="text-xl font-bold text-gray-700">${title}</h3>
+                            <div data-lucide="chevron-down" class="lucide-chevron-down text-gray-500"></div>
+                        </button>
+                        <div id="${id}" class="collapsible-content">${content}</div>
+                    </div>`;
+        }
+
+        function createTableHtml(headers, rows, formatValueAsCurrency = false) {
+            const headerHtml = headers.map(h => `<th class="p-3 font-semibold">${h}</th>`).join('');
+            const bodyHtml = rows.map(row => {
+                const cells = Object.values(row).map((cell, index) => {
+                    const header = headers[index] ? headers[index].toLowerCase() : '';
+                    if (formatValueAsCurrency && header === 'valor') {
+                        return `<td class="p-3">R$ ${Number(cell).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>`;
+                    }
+                    return `<td class="p-3">${cell}</td>`;
+                }).join('');
+                return `<tr class="border-b border-gray-200">${cells}</tr>`;
+            }).join('');
+            return `<div class="overflow-x-auto mt-4"><table class="w-full table-auto text-sm"><thead class="bg-gray-100 text-left"><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+        }
+        
+        function renderDashboard(sector) {
+            const data = dashboardsData[sector];
+            document.getElementById('painel-title').textContent = data.title;
+            if (sector === 'contencioso') {
+                renderContenciosoDashboard(data);
+            } else {
+                renderStandardDashboard(data, 'dashboard-container');
+            }
+            setTimeout(() => { if (typeof lucide !== 'undefined' && lucide.createIcons) { lucide.createIcons(); } }, 50);
+        }
+
+        // --- INICIALIZAÇÃO E LÓGICA PRINCIPAL ---
+        async function init() {
+            const loadingContainer = document.getElementById('loading-container');
+            const dashboardContainer = document.getElementById('dashboard-container');
+            const statusMessage = document.getElementById('status-message');
+            
+            if (API_URL === "COLE_A_SUA_URL_AQUI" || !API_URL) {
+                loadingContainer.innerHTML = `<p class="text-2xl text-red-600">ERRO: URL da API não configurada.</p>`;
+                return;
+            }
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`Erro de rede: ${response.status}`);
+                const apiData = await response.json();
+                if (apiData.error) throw new Error(`Erro no Script do Google: ${apiData.error}`);
+                
+                // Junta dados manuais e da API para cada setor
+                dashboardsData.medica = { ...manualData.medica, ...apiData.dadosPlan1 };
+                dashboardsData.licitacao = { ...manualData.licitacao, ...apiData.dadosPlan2 };
+                dashboardsData.previdencia = { ...manualData.previdencia, ...apiData.dadosPlan3 };
+                dashboardsData.contencioso = { ...manualData.contencioso, ...apiData.dadosPlan4 };
+                
+                loadingContainer.classList.add('hidden');
+                dashboardContainer.classList.remove('hidden');
+                
+                setActiveTab('tab-medica');
+                statusMessage.textContent = `Dados atualizados em: ${new Date().toLocaleString('pt-BR')}`;
+                statusMessage.className = 'mt-4 text-sm font-medium text-green-600';
+            } catch (error) {
+                loadingContainer.innerHTML = `<p class="text-2xl text-red-600">Falha ao Carregar Dados</p><p class="text-gray-600 mt-2">${error.message}</p>`;
+                console.error("Erro detalhado:", error);
+            }
+        }
+
+        function setActiveTab(activeId) {
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.getElementById(activeId).classList.add('active');
+            renderDashboard(activeId.replace('tab-', ''));
+        }
+
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', (e) => setActiveTab(e.target.id));
+        });
+        
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
+
