@@ -44,8 +44,8 @@
     </div>
 
     <script>
-        // --- PASSO 1: COLE A URL DO SEU SCRIPT AQUI ---
-        const API_URL = "https://script.google.com/macros/s/AKfycbxw48woZgv_Y7GC9fxsRQfBoP9trxs1-EA0KBUY_SpzWg05ERsZ5SpS76ouNhJE34Z5/exec"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        // --- URL ATUALIZADA ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbzEd3o3JKAreEWhUjBwWghXf_QRfMtlVOEKXP4R15F26bU7Cjmnvs6flsvPLapYr2lA/exec"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
         let dashboardsData = {};
         let chartInstances = {};
@@ -145,15 +145,16 @@
             
             const priorityNoteHtml = data.priorityNote ? `<div class="flex items-center p-4 mb-8 bg-yellow-100 rounded-lg shadow-md space-x-4"><div data-lucide="alert-triangle" class="text-yellow-600"></div><p class="text-sm text-yellow-800 font-semibold">${data.priorityNote}</p></div>` : '';
             
-           const chartsAndTablesHtml = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Processos por Mês</h3><canvas id="monthlyChart"></canvas></div>
-                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Desempenho da Equipe</h3><canvas id="employeeChart"></canvas></div>
-                    
-                                        <div id="judicial-chart-container" class="bg-white rounded-lg shadow-md p-6 lg:col-span-2 hidden">
-                        <h3 class="text-xl font-bold text-gray-700 mb-4">Processos Judiciais por Tema</h3>
-                        <canvas id="judicialChart"></canvas>
-                    </div>
-                                    </div>
+            const chartsAndTablesHtml = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Processos por Mês</h3><canvas id="monthlyChart"></canvas></div>
+                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Desempenho da Equipe</h3><canvas id="employeeChart"></canvas></div>
+                </div>
+
+                <div id="judicial-chart-container" class="mt-8 bg-white rounded-lg shadow-md p-6 hidden">
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Processos Judiciais por Tema</h3>
+                    <canvas id="judicialChart" style="max-height: 350px;"></canvas>
+                </div>
+
                 <div class="mt-8 bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Resumo por Funcionário</h3><div class="overflow-x-auto"><table class="w-full table-auto text-sm">
                     <thead class="bg-gray-100 text-left">
                         <tr>
@@ -196,32 +197,29 @@
             if (desempenhoEquipe?.length > 0) {
                 createChart('employeeChart', 'bar', { labels: desempenhoEquipe.map(e => e.name), datasets: [{ label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a' }, { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a' }, { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a' }] }, { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } });
             }
-            // --- INÍCIO DO NOVO CÓDIGO ---
-            // Verifica se os dados do graficoJudicial existem (que só virão do Contencioso)
-            if (data.graficoJudicial?.labels?.length > 0) {
-                // Mostra o container do gráfico (remove a classe 'hidden')
-                document.getElementById('judicial-chart-container')?.classList.remove('hidden');
 
-                // Cria o gráfico de Pizza (Doughnut)
-                createChart('judicialChart', 'doughnut', { 
-                    labels: data.graficoJudicial.labels, 
-                    datasets: [{ 
-                        label: 'Processos', 
-                        data: data.graficoJudicial.data.map(d => Number(d) || 0), 
-                        backgroundColor: ['#4f46e5', '#d946ef', '#f59e0b', '#10b981', '#3b82f6'], // Cores
-                        hoverOffset: 4 
-                    }] 
-                }, { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { 
-                            position: 'top', 
-                        } 
-                    } 
-                });
-            }
-            // --- FIM DO NOVO CÓDIGO ---
+            if (data.graficoJudicial?.labels?.length > 0) {
+                const judicialContainer = document.getElementById('judicial-chart-container');
+                if (judicialContainer) judicialContainer.classList.remove('hidden');
+
+                createChart('judicialChart', 'doughnut', { 
+                    labels: data.graficoJudicial.labels, 
+                    datasets: [{ 
+                        label: 'Processos', 
+                        data: data.graficoJudicial.data.map(d => Number(d) || 0), 
+                        backgroundColor: ['#4f46e5', '#d946ef', '#f59e0b', '#10b981', '#3b82f6'],
+                        hoverOffset: 4 
+                    }] 
+                }, { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { 
+                            position: 'top', 
+                        } 
+                    } 
+                });
+            }
         }
 
         function renderContenciosoDashboard(data) {
@@ -338,21 +336,28 @@
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error(`Erro de rede: ${response.status}`);
-                const apiData = await response.json();
-                if (apiData.error) throw new Error(`Erro no Script do Google: ${apiData.error}`);
+                let apiData = await response.json();
+
+                if (apiData.error) {
+                    console.error("Erro recebido do Google Script:", apiData.error);
+                    statusMessage.textContent = `Erro no script da planilha: ${apiData.error}. A exibir apenas dados manuais.`;
+                    statusMessage.className = 'mt-4 text-sm font-medium text-red-600';
+                    apiData = {};
+                } else {
+                    statusMessage.textContent = `Dados atualizados em: ${new Date().toLocaleString('pt-BR')}`;
+                    statusMessage.className = 'mt-4 text-sm font-medium text-green-600';
+                }
                 
-                // Junta dados manuais e da API para cada setor
-                dashboardsData.medica = { ...manualData.medica, ...apiData.dadosPlan1 };
-                dashboardsData.licitacao = { ...manualData.licitacao, ...apiData.dadosPlan2 };
-                dashboardsData.previdencia = { ...manualData.previdencia, ...apiData.dadosPlan3 };
-                dashboardsData.contencioso = { ...manualData.contencioso, ...apiData.dadosPlan4 };
+                dashboardsData.medica = { ...manualData.medica, ...(apiData.dadosPlan1 || {}) };
+                dashboardsData.licitacao = { ...manualData.licitacao, ...(apiData.dadosPlan2 || {}) };
+                dashboardsData.previdencia = { ...manualData.previdencia, ...(apiData.dadosPlan3 || {}) };
+                dashboardsData.contencioso = { ...manualData.contencioso, ...(apiData.dadosPlan4 || {}) };
                 
                 loadingContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
                 
                 setActiveTab('tab-medica');
-                statusMessage.textContent = `Dados atualizados em: ${new Date().toLocaleString('pt-BR')}`;
-                statusMessage.className = 'mt-4 text-sm font-medium text-green-600';
+                
             } catch (error) {
                 loadingContainer.innerHTML = `<p class="text-2xl text-red-600">Falha ao Carregar Dados</p><p class="text-gray-600 mt-2">${error.message}</p>`;
                 console.error("Erro detalhado:", error);
