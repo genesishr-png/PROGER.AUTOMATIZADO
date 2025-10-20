@@ -136,12 +136,29 @@
             const { kpis, graficoMensal, desempenhoEquipe, ausencias } = data;
             const totalGeral = (kpis.concluidos || 0) + (kpis.emAndamento || 0);
 
-            const kpisHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="check-circle" class="text-green-500"></div><div><h3 class="text-xl font-semibold">Concluídos</h3><p class="text-3xl font-bold text-gray-700">${kpis.concluidos}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="clock" class="text-yellow-500"></div><div><h3 class="text-xl font-semibold">Em Andamento</h3><p class="text-3xl font-bold text-gray-700">${kpis.emAndamento}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="users" class="text-blue-500"></div><div><h3 class="text-xl font-semibold">Total de Processos</h3><p class="text-3xl font-bold text-gray-700">${totalGeral}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="file-text" class="text-purple-500"></div><div><h3 class="text-xl font-semibold">Média de Duração</h3><p class="text-3xl font-bold text-gray-700">${kpis.mediaDuracao} dias</p></div></div>
-                </div>`;
+            // Define o título do KPI de Total de Processos dinamicamente
+            const totalProcessosTitle = (data.graficoJudicial) ? 'Total de Processos Administrativos' : 'Total de Processos';
+
+            let kpiCardsHtml = `
+                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="check-circle" class="text-green-500"></div><div><h3 class="text-xl font-semibold">Concluídos</h3><p class="text-3xl font-bold text-gray-700">${kpis.concluidos}</p></div></div>
+                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="clock" class="text-yellow-500"></div><div><h3 class="text-xl font-semibold">Em Andamento</h3><p class="text-3xl font-bold text-gray-700">${kpis.emAndamento}</p></div></div>
+                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="users" class="text-blue-500"></div><div><h3 class="text-xl font-semibold">${totalProcessosTitle}</h3><p class="text-3xl font-bold text-gray-700">${totalGeral}</p></div></div>
+                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="file-text" class="text-purple-500"></div><div><h3 class="text-xl font-semibold">Média de Duração</h3><p class="text-3xl font-bold text-gray-700">${kpis.mediaDuracao} dias</p></div></div>
+            `;
+
+            let gridClass = 'lg:grid-cols-4';
+
+            if (data.graficoJudicial && data.graficoJudicial.data?.length > 0) {
+                const totalDemandas = data.graficoJudicial.data.reduce((sum, value) => sum + (Number(value) || 0), 0);
+                kpiCardsHtml += `
+                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="gavel" class="text-red-500"></div><div><h3 class="text-xl font-semibold">Total Demandas Jud.</h3><p class="text-3xl font-bold text-gray-700">${totalDemandas}</p></div></div>
+                `;
+                gridClass = 'lg:grid-cols-5';
+            }
+
+            const kpisHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 ${gridClass} gap-6 mb-8">
+                ${kpiCardsHtml}
+            </div>`;
             
             const priorityNoteHtml = data.priorityNote ? `<div class="flex items-center p-4 mb-8 bg-yellow-100 rounded-lg shadow-md space-x-4"><div data-lucide="alert-triangle" class="text-yellow-600"></div><p class="text-sm text-yellow-800 font-semibold">${data.priorityNote}</p></div>` : '';
             
@@ -151,7 +168,7 @@
                 </div>
 
                 <div id="judicial-chart-container" class="mt-8 bg-white rounded-lg shadow-md p-6 hidden">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4">Processos Judiciais por Tema</h3>
+                    <h3 class="text-xl font-bold text-gray-700 mb-4">Demandas Judiciais por Tema</h3>
                     <canvas id="judicialChart" style="max-height: 350px;"></canvas>
                 </div>
 
@@ -202,22 +219,27 @@
                 const judicialContainer = document.getElementById('judicial-chart-container');
                 if (judicialContainer) judicialContainer.classList.remove('hidden');
 
-                createChart('judicialChart', 'doughnut', { 
+                createChart('judicialChart', 'bar', { 
                     labels: data.graficoJudicial.labels, 
                     datasets: [{ 
-                        label: 'Processos', 
+                        label: 'Demandas', 
                         data: data.graficoJudicial.data.map(d => Number(d) || 0), 
-                        backgroundColor: ['#4f46e5', '#d946ef', '#f59e0b', '#10b981', '#3b82f6'],
-                        hoverOffset: 4 
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 5 
                     }] 
                 }, { 
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
                         legend: { 
-                            position: 'top', 
+                            display: false, 
                         } 
-                    } 
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
                 });
             }
         }
@@ -378,4 +400,6 @@
     </script>
 </body>
 </html>
+
+
 
