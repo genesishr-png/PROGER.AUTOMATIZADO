@@ -39,6 +39,15 @@
             <button id="tab-contencioso" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Contencioso</button>
         </div>
         
+        <!-- INÍCIO: Nota Global Sobre a Troca de Sistema (Adicionado) -->
+        <div id="global-system-note" class="flex items-center p-4 mb-8 bg-blue-100 rounded-lg shadow-md space-x-4 hidden">
+            <div data-lucide="info" class="text-blue-600 flex-shrink-0 w-6 h-6"></div>
+            <p class="text-sm text-blue-800 font-semibold">
+                <b>Nota Importante:</b> A partir de Setembro de 2025, iniciou-se a migração de sistemas do EL para o SEI. Isto pode impactar temporariamente os tempos médios de processo e os registos de desempenho.
+            </p>
+        </div>
+        <!-- FIM: Nota Global -->
+
         <div id="loading-container" class="text-center p-10"><p class="text-2xl animate-pulse text-indigo-600">Buscando dados das planilhas...</p></div>
         <div id="dashboard-container" class="hidden"></div>
     </div>
@@ -65,8 +74,6 @@
                 title: 'Painel de Desempenho da Divisão de Licitação e Contratos',
                 priorityNote: "Os últimos 5 processos realizados em julho foram tratados com prioridade por determinação da presidência. Isso impactou o cronograma dos demais processos que estavam na fila de análise.",
                 ausencias: [
-                    { servidor: 'Lincoln', motivo: 'Campeonato', inicio: '13/10/2025', fim: '20/10/2025' },
-                    { servidor: '', motivo: '', inicio: '', fim: '' },
                     { servidor: '', motivo: '', inicio: '', fim: '' }
                 ]
             },
@@ -210,13 +217,58 @@
 
             container.innerHTML = kpisHtml + priorityNoteHtml + chartsAndTablesHtml + ausenciasHtml;
             
+            // Gráfico Mensal (Barras)
             if (graficoMensal?.labels?.length > 0) {
-                createChart('monthlyChart', 'bar', { labels: graficoMensal.labels, datasets: [{ label: 'Processos', data: graficoMensal.data.map(d => Number(d) || 0), backgroundColor: '#6d28d9', borderRadius: 5 }] }, { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
-            }
-            if (desempenhoEquipe?.length > 0) {
-                createChart('employeeChart', 'bar', { labels: desempenhoEquipe.map(e => e.name), datasets: [{ label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a' }, { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a' }, { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a' }] }, { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } });
+                
+                // Lógica para definir cores: Setembro será destacado
+                const corNormal = '#8b5cf6'; // Cor violeta suave
+                const corDestaque = '#f59e0b'; // Cor laranja/âmbar
+                
+                const coresGraficoMensal = graficoMensal.labels.map(label => {
+                    // Verifica se o label inclui 'Set' (para Setembro)
+                    return label.toLowerCase().includes('set') ? corDestaque : corNormal;
+                });
+
+                createChart('monthlyChart', 'bar', { 
+                    labels: graficoMensal.labels, 
+                    datasets: [{ 
+                        label: 'Processos', 
+                        data: graficoMensal.data.map(d => Number(d) || 0), 
+                        backgroundColor: coresGraficoMensal, // Array de cores dinâmico
+                        borderRadius: 5 
+                    }] 
+                }, { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        legend: { display: false }
+                    } 
+                });
             }
 
+            // Gráfico de Equipa (Barras Empilhadas)
+            if (desempenhoEquipe?.length > 0) {
+                createChart('employeeChart', 'bar', { 
+                    labels: desempenhoEquipe.map(e => e.name), 
+                    datasets: [
+                        { label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a', borderRadius: 5 }, 
+                        { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a', borderRadius: 5 }, 
+                        { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a', borderRadius: 5 }
+                    ] 
+                }, { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    plugins: {
+                        legend: { 
+                            position: 'top' // Mantém a legenda para este gráfico
+                        } 
+                    } 
+                });
+            }
+
+            // Gráfico Judicial (Barras)
             if (data.graficoJudicial?.labels?.length > 0) {
                 const judicialContainer = document.getElementById('judicial-chart-container');
                 if (judicialContainer) judicialContainer.classList.remove('hidden');
@@ -226,16 +278,14 @@
                     datasets: [{ 
                         label: 'Demandas', 
                         data: data.graficoJudicial.data.map(d => Number(d) || 0), 
-                        backgroundColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf6', // Cor violeta suave
                         borderRadius: 5 
                     }] 
                 }, { 
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
-                        legend: { 
-                            display: false, 
-                        } 
+                        legend: { display: false }
                     },
                     scales: {
                         y: {
@@ -352,6 +402,7 @@
             const loadingContainer = document.getElementById('loading-container');
             const dashboardContainer = document.getElementById('dashboard-container');
             const statusMessage = document.getElementById('status-message');
+            const globalNote = document.getElementById('global-system-note'); // Pega a nota
             
             if (API_URL === "COLE_A_SUA_URL_AQUI" || !API_URL) {
                 loadingContainer.innerHTML = `<p class="text-2xl text-red-600">ERRO: URL da API não configurada.</p>`;
@@ -379,11 +430,13 @@
                 
                 loadingContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
+                if (globalNote) globalNote.classList.remove('hidden'); // Mostra a nota global
                 
                 setActiveTab('tab-medica');
                 
             } catch (error) {
                 loadingContainer.innerHTML = `<p class="text-2xl text-red-600">Falha ao Carregar Dados</p><p class="text-gray-600 mt-2">${error.message}</p>`;
+                if (globalNote) globalNote.classList.remove('hidden'); // Mostra a nota global mesmo em caso de erro
                 console.error("Erro detalhado:", error);
             }
         }
@@ -402,8 +455,4 @@
     </script>
 </body>
 </html>
-
-
-
-
 
