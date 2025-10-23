@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<!-- Adicionando a classe 'dark' aqui dinamicamente via JS -->
+<html lang="pt-BR" style="color-scheme: light;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,56 +9,165 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js para os gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Lucide Icons para os ícones dos cartões -->
+    <!-- Lucide Icons para os ícones -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+        /* Estilo base para o dark mode */
+        .dark { color-scheme: dark; }
+
         canvas { max-height: 300px; }
-        .tab-button { transition: all 0.2s ease-in-out; border-bottom: 3px solid transparent; }
-        .tab-button.active { border-color: #4338ca; color: #4338ca; font-weight: 600; }
-        .sub-tab-button { transition: all 0.2s ease-in-out; border-bottom: 2px solid transparent; }
-        .sub-tab-button.active { border-color: #f59e0b; color: #f59e0b; font-weight: 600; }
-        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+        
+        /* --- Estilos das Abas --- */
+        .tab-button { 
+            transition: all 0.2s ease-in-out; 
+            border-bottom: 3px solid transparent; 
+            padding-bottom: 8px;
+        }
+        .tab-button.active { 
+            border-color: #4338ca; /* indigo-700 */
+            color: #4338ca; /* indigo-700 */
+            font-weight: 600; 
+        }
+        .dark .tab-button.active {
+            border-color: #a5b4fc; /* indigo-300 */
+            color: #a5b4fc; /* indigo-300 */
+        }
+        
+        /* --- Estilos das Sub-Abas --- */
+        .sub-tab-button { 
+            transition: all 0.2s ease-in-out; 
+            border-bottom: 2px solid transparent; 
+        }
+        .sub-tab-button.active { 
+            border-color: #f59e0b; /* amber-500 */
+            color: #f59e0b; /* amber-500 */
+            font-weight: 600; 
+        }
+        .dark .sub-tab-button.active {
+             border-color: #fcd34d; /* amber-300 */
+            color: #fcd34d; /* amber-300 */
+        }
+        
+        /* --- Estilos do Colapsável --- */
+        .collapsible-content { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.5s ease-in-out; 
+        }
         .collapsible-content.expanded { max-height: 1000px; }
+        
         .lucide-chevron-down { transition: transform 0.3s ease-in-out; }
         .lucide-chevron-down.rotate-180 { transform: rotate(180deg); }
     </style>
 </head>
-<body class="bg-gray-100 p-4 sm:p-8 text-gray-800">
-    <div class="max-w-7xl mx-auto">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <!-- CABEÇALHO PROFISSIONAL STICKY -->
+    <nav class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex justify-between items-center">
+            <!-- Título do Painel na Nav -->
+            <div class="flex items-center space-x-3">
+                <div data-lucide="bar-chart-3" class="text-indigo-600 dark:text-indigo-400 w-7 h-7"></div>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 hidden sm:block">Painel de Desempenho</h1>
+            </div>
+            
+            <!-- Botão de Alternar Tema (Dark/Light) -->
+            <button id="theme-toggle" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Alternar tema">
+                <span id="theme-icon-light" class="hidden"><div data-lucide="sun" class="w-5 h-5"></div></span>
+                <span id="theme-icon-dark"><div data-lucide="moon" class="w-5 h-5"></div></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <div class="max-w-7xl mx-auto p-4 sm:p-8">
         <header class="mb-8 text-center">
-            <h1 id="painel-title" class="text-3xl sm:text-4xl font-bold text-indigo-700">Carregando Painel...</h1>
-            <p class="mt-2 text-lg text-gray-600">Visualização de processos e desempenho da equipe</p>
+            <h1 id="painel-title" class="text-3xl sm:text-4xl font-bold text-indigo-700 dark:text-indigo-400">Carregando Painel...</h1>
+            <p class="mt-2 text-lg text-gray-600 dark:text-gray-400">Visualização de processos e desempenho da equipe</p>
             <div id="status-message" class="mt-4 text-sm font-medium"></div>
         </header>
 
+        <!-- Abas Principais -->
         <div class="flex justify-center space-x-4 mb-8 overflow-x-auto pb-2">
-            <button id="tab-medica" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg active whitespace-nowrap">Assistência Médica</button>
-            <button id="tab-licitacao" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Licitação e Contratos</button>
-            <button id="tab-previdencia" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Previdência</button>
-            <button id="tab-contencioso" class="tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Contencioso</button>
+            <button id="tab-medica" class="tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg active whitespace-nowrap">Assistência Médica</button>
+            <button id="tab-licitacao" class="tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">Licitação e Contratos</button>
+            <button id="tab-previdencia" class="tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">Previdência</button>
+            <button id="tab-contencioso" class="tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">Contencioso</button>
+        </div>
+        
+        <!-- Nota Global Sobre a Troca de Sistema -->
+        <div id="global-system-note" class="flex items-start sm:items-center p-4 mb-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg shadow-md space-x-4 hidden">
+            <div data-lucide="info" class="text-blue-600 dark:text-blue-400 flex-shrink-0 w-6 h-6 mt-1 sm:mt-0"></div>
+            <p class="text-sm text-blue-800 dark:text-blue-200 font-semibold">
+                <b>Nota Importante:</b> A partir de Setembro de 2025, iniciou-se a migração de sistemas do EL para o SEI. Isto pode impactar temporariamente os tempos médios de processo e os registos de desempenho.
+            </p>
         </div>
 
-        <div id="loading-container" class="text-center p-10"><p class="text-2xl animate-pulse text-indigo-600">Buscando dados das planilhas...</p></div>
+        <!-- Containers de Conteúdo -->
+        <div id="loading-container" class="text-center p-10"><p class="text-2xl animate-pulse text-indigo-600 dark:text-indigo-400">Buscando dados das planilhas...</p></div>
         <div id="dashboard-container" class="hidden"></div>
     </div>
 
     <script>
-        // --- URL ATUALIZADA ---
-        const API_URL = "https://script.google.com/macros/s/AKfycbzEd3o3JKAreEWhUjBwWghXf_QRfMtlVOEKXP4R15F26bU7Cjmnvs6flsvPLapYr2lA/exec"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        // --- URL DA API DO GOOGLE APPS SCRIPT ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbzEd3o3JKAreEWhUjBwWghXf_QRfMtlVOEKXP4R15F26bU7Cjmnvs6flsvPLapYr2lA/exec";
 
         let dashboardsData = {};
         let chartInstances = {};
 
+        // --- LÓGICA DO TEMA (DARK MODE) ---
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIconLight = document.getElementById('theme-icon-light');
+        const themeIconDark = document.getElementById('theme-icon-dark');
+        const docHtml = document.documentElement;
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                docHtml.classList.add('dark');
+                docHtml.style.colorScheme = 'dark';
+                themeIconLight.classList.remove('hidden');
+                themeIconDark.classList.add('hidden');
+            } else {
+                docHtml.classList.remove('dark');
+                docHtml.style.colorScheme = 'light';
+                themeIconLight.classList.add('hidden');
+                themeIconDark.classList.remove('hidden');
+            }
+            updateChartColors();
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = docHtml.classList.contains('dark') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+        
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
         // --- DADOS MANUAIS ---
-        // EDITE AS INFORMAÇÕES DE AUSÊNCIAS AQUI
         const manualData = {
             medica: {
                 title: 'Painel de Desempenho da Divisão de Assistência Médica',
                 ausencias: [
-                    { servidor: 'nélio', motivo: 'Férias', inicio: '10/07/2025', fim: '07/09/2025' },
-                    { servidor: 'lucí', motivo: 'Férias', inicio: '22/09/2025', fim: '01/10/2025' },
+                    { servidor: 'Nélio', motivo: 'Férias', inicio: '10/07/2025', fim: '07/09/2025' },
+                    { servidor: 'Luci', motivo: 'Férias', inicio: '22/09/2025', fim: '01/10/2025' },
                     { servidor: '', motivo: '', inicio: '', fim: '' }
                 ]
             },
@@ -65,23 +175,20 @@
                 title: 'Painel de Desempenho da Divisão de Licitação e Contratos',
                 priorityNote: "Os últimos 5 processos realizados em julho foram tratados com prioridade por determinação da presidência. Isso impactou o cronograma dos demais processos que estavam na fila de análise.",
                 ausencias: [
-                    { servidor: 'Lincoln', motivo: 'Campeonato Autorizado', inicio: '13/10/2025', fim: '20/10/2025' }
-                    { servidor: 'Lincoln', motivo: 'Campeonato', inicio: '13/10/2025', fim: '20/10/2025' },
-                    { servidor: '', motivo: '', inicio: '', fim: '' },
                     { servidor: '', motivo: '', inicio: '', fim: '' }
                 ]
             },
             previdencia: { 
                 title: 'Painel de Desempenho da Divisão de Processos Previdenciários',
                 ausencias: [
-                    { servidor: 'Ilza', motivo: 'viagem a trabalho', inicio: '28/07/2025', fim: '01/08/2025' },
-                     { servidor: 'Ilza', motivo: 'férias', inicio: '01/07/2025', fim: '16/07/2025' }
+                    { servidor: 'Ilza', motivo: 'Viagem a trabalho', inicio: '28/07/2025', fim: '01/08/2025' },
+                    { servidor: 'Ilza', motivo: 'Férias', inicio: '01/07/2025', fim: '16/07/2025' }
                 ]
             },
             contencioso: {
                 title: 'Painel de Desempenho da Divisão Administrativa e Contenciosa',
                 ausencias: [
-                    { servidor: 'Denise', motivo: 'Congresso agendado', inicio: '5/08/2025', fim: '07/08/2025' }
+                    { servidor: 'Denise', motivo: 'Congresso agendado', inicio: '05/08/2025', fim: '07/08/2025' }
                 ],
                 assistenciaJudicial: {
                     total: 36,
@@ -109,13 +216,90 @@
             }
         };
 
-        // --- FUNÇÕES AUXILIARES ---
+        // --- ATUALIZADO: OBJETOS/PADRÕES SVG PARA OS KPIS ---
+        // SVGs inline para maior controle e confiabilidade
+        const kpiPatterns = {
+            concluidos: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d='M15 30 l10 10 L45 20' /></svg>`,
+            emAndamento: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4"><circle cx="30" cy="30" r="15" stroke-dasharray="8 8" /></svg>`,
+            processos: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4"><rect x="15" y="15" width="30" height="30" rx="5" /></svg>`,
+            duracao: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d='M15 20h30M15 30h30M15 40h30M20 15v30M30 15v30M40 15v30' /></svg>`,
+            judicial: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d='M15 50 L30 10 L45 50 Z M10 50h40' /></svg>`,
+            pagamentos: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d='M20 30c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10zm0 0h20M30 20v-5M30 40v5' /></svg>`,
+            pendente: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d='M30 50 V 30 L 45 45 M 30 30 L 15 45' /></svg>`,
+            precatorio: `<svg class="w-20 h-20 text-gray-200 dark:text-gray-700 opacity-50" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d='M15 15h30v30H15z M15 25h30 M25 15v30' /></svg>`,
+        };
+
+        // --- FUNÇÕES AUXILIARES DE GRÁFICOS ---
+        
+        function getChartThemeColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                ticksColor: isDark ? 'rgb(209 213 219)' : 'rgb(107 114 128)',
+                gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                legendColor: isDark ? 'rgb(229 231 235)' : 'rgb(55 65 81)',
+            };
+        }
+
+        function updateChartColors() {
+            const colors = getChartThemeColors();
+            Object.values(chartInstances).forEach(chart => {
+                if (chart) {
+                    if(chart.options.scales.x) {
+                        chart.options.scales.x.ticks.color = colors.ticksColor;
+                        chart.options.scales.x.grid.color = colors.gridColor;
+                    }
+                    if(chart.options.scales.y) {
+                        chart.options.scales.y.ticks.color = colors.ticksColor;
+                        chart.options.scales.y.grid.color = colors.gridColor;
+                    }
+                    if (chart.options.plugins.legend) {
+                        chart.options.plugins.legend.labels.color = colors.legendColor;
+                    }
+                    chart.update('none');
+                }
+            });
+        }
+
         function createChart(id, type, data, options) {
             const ctx = document.getElementById(id)?.getContext('2d');
             if (!ctx) return;
+            
+            const colors = getChartThemeColors();
+            
+            const themeOptions = {
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { color: colors.ticksColor }, 
+                        grid: { color: colors.gridColor, drawBorder: false }
+                    },
+                    x: { 
+                        ticks: { color: colors.ticksColor }, 
+                        grid: { color: colors.gridColor, drawBorder: false } 
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        labels: { color: colors.legendColor } 
+                    }
+                }
+            };
+
+            const finalOptions = { ...themeOptions, ...options };
+            finalOptions.scales = { ...themeOptions.scales, ...(options.scales || {}) };
+            finalOptions.scales.x = { ...themeOptions.scales.x, ...(options.scales?.x || {}) };
+            finalOptions.scales.y = { ...themeOptions.scales.y, ...(options.scales?.y || {}) };
+            finalOptions.plugins = { ...themeOptions.plugins, ...(options.plugins || {}) };
+            if (options.plugins?.legend) {
+                 finalOptions.plugins.legend = { ...themeOptions.plugins.legend, ...options.plugins.legend };
+            }
+
             if (chartInstances[id]) chartInstances[id].destroy();
-            chartInstances[id] = new Chart(ctx, { type, data, options });
+            chartInstances[id] = new Chart(ctx, { type, data, options: finalOptions });
         }
+
+
+        // --- FUNÇÕES AUXILIARES DE UI ---
 
         function toggleCollapsible(id) {
             const element = document.getElementById(id);
@@ -129,54 +313,81 @@
             document.getElementById(activeId).classList.add('active');
         }
 
+        /**
+         * ATUALIZADO: Cria um card de KPI profissional com padrão de fundo (SVG inline).
+         */
+        function createKpiCard(title, value, iconName, iconColor, patternSvgHtml, subtitle = '') {
+            const subtitleHtml = subtitle ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${subtitle}</p>` : '';
+            // Gera a cor escura correspondente. ex: text-green-600 -> text-green-400
+            const darkIconColor = iconColor.replace('600', '400'); 
+
+            return `
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5 relative overflow-hidden">
+                <!-- Div do Padrão "Objeto" (SVG Inline) -->
+                <div class="absolute -right-2 -bottom-2 transform rotate-[-15deg]">
+                    ${patternSvgHtml}
+                </div>
+                
+                <!-- Conteúdo do Card (acima do padrão) -->
+                <div class="relative z-10 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">${title}</h3>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">${value}</p>
+                        ${subtitleHtml}
+                    </div>
+                    <!-- Círculo do Ícone (agora com fundo neutro) -->
+                    <div class="flex-shrink-0 p-3 rounded-full bg-gray-100 dark:bg-gray-700/50">
+                        <div data-lucide="${iconName}" class="${iconColor} dark:${darkIconColor} w-6 h-6"></div>
+                    </div>
+                </div>
+            </div>`;
+        }
+        
         // --- FUNÇÕES DE RENDERIZAÇÃO ---
         function renderStandardDashboard(data, containerId) {
             const container = document.getElementById(containerId);
             if (!data || !data.kpis || data.kpis.concluidos === null) {
-                container.innerHTML = `<div class="bg-white p-8 rounded-lg shadow-md text-center text-gray-500"><p class="font-semibold">Dados de desempenho para este setor ainda não foram configurados na planilha.</p><p class="text-sm mt-2">Por favor, configure o ID e os intervalos de células no Google Apps Script para automatizar esta visualização.</p></div>`;
+                container.innerHTML = `<div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg text-center text-gray-500 dark:text-gray-400"><p class="font-semibold">Dados de desempenho para este setor ainda não foram configurados na planilha.</p><p class="text-sm mt-2">Por favor, configure o ID e os intervalos de células no Google Apps Script para automatizar esta visualização.</p></div>`;
                 return;
             }
             const { kpis, graficoMensal, desempenhoEquipe, ausencias } = data;
             const totalGeral = (kpis.concluidos || 0) + (kpis.emAndamento || 0);
 
-            // Define o título do KPI de Total de Processos dinamicamente
             const totalProcessosTitle = (data.graficoJudicial) ? 'Total de Processos Administrativos' : 'Total de Processos';
 
-            let kpiCardsHtml = `
-                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="check-circle" class="text-green-500"></div><div><h3 class="text-xl font-semibold">Concluídos</h3><p class="text-3xl font-bold text-gray-700">${kpis.concluidos}</p></div></div>
-                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="clock" class="text-yellow-500"></div><div><h3 class="text-xl font-semibold">Em Andamento</h3><p class="text-3xl font-bold text-gray-700">${kpis.emAndamento}</p></div></div>
-                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="users" class="text-blue-500"></div><div><h3 class="text-xl font-semibold">${totalProcessosTitle}</h3><p class="text-3xl font-bold text-gray-700">${totalGeral}</p></div></div>
-                <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="file-text" class="text-purple-500"></div><div><h3 class="text-xl font-semibold">Média de Duração</h3><p class="text-3xl font-bold text-gray-700">${kpis.mediaDuracao} dias</p></div></div>
-            `;
+            // ATUALIZADO: Chamadas usam os novos padrões SVG
+            let kpiCardsHtml = 
+                createKpiCard('Concluídos', kpis.concluidos, 'check-circle', 'text-green-600', kpiPatterns.concluidos) +
+                createKpiCard('Em Andamento', kpis.emAndamento, 'clock', 'text-yellow-600', kpiPatterns.emAndamento) +
+                createKpiCard(totalProcessosTitle, totalGeral, 'briefcase', 'text-blue-600', kpiPatterns.processos) +
+                createKpiCard('Média Duração', `${kpis.mediaDuracao} dias`, 'calendar-clock', 'text-purple-600', kpiPatterns.duracao);
 
             let gridClass = 'lg:grid-cols-4';
 
             if (data.graficoJudicial && data.graficoJudicial.data?.length > 0) {
                 const totalDemandas = data.graficoJudicial.data.reduce((sum, value) => sum + (Number(value) || 0), 0);
-                kpiCardsHtml += `
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="gavel" class="text-red-500"></div><div><h3 class="text-xl font-semibold">Total Demandas Jud.</h3><p class="text-3xl font-bold text-gray-700">${totalDemandas}</p></div></div>
-                `;
+                kpiCardsHtml += createKpiCard('Total Demandas Jud.', totalDemandas, 'gavel', 'text-red-600', kpiPatterns.judicial);
                 gridClass = 'lg:grid-cols-5';
             }
 
             const kpisHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 ${gridClass} gap-6 mb-8">
                 ${kpiCardsHtml}
             </div>`;
-
-            const priorityNoteHtml = data.priorityNote ? `<div class="flex items-center p-4 mb-8 bg-yellow-100 rounded-lg shadow-md space-x-4"><div data-lucide="alert-triangle" class="text-yellow-600"></div><p class="text-sm text-yellow-800 font-semibold">${data.priorityNote}</p></div>` : '';
-
+            
+            const priorityNoteHtml = data.priorityNote ? `<div class="flex items-start sm:items-center p-4 mb-8 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg shadow-md space-x-4"><div data-lucide="alert-triangle" class="text-yellow-600 dark:text-yellow-400 flex-shrink-0 w-6 h-6 mt-1 sm:mt-0"></div><p class="text-sm text-yellow-800 dark:text-yellow-200 font-semibold">${data.priorityNote}</p></div>` : '';
+            
             const chartsAndTablesHtml = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Processos por Mês</h3><canvas id="monthlyChart"></canvas></div>
-                    <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Desempenho da Equipe</h3><canvas id="employeeChart"></canvas></div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"><h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Processos por Mês</h3><canvas id="monthlyChart"></canvas></div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"><h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Desempenho da Equipe</h3><canvas id="employeeChart"></canvas></div>
                 </div>
 
-                <div id="judicial-chart-container" class="mt-8 bg-white rounded-lg shadow-md p-6 hidden">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4">Demandas Judiciais por Tema</h3>
+                <div id="judicial-chart-container" class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hidden">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Demandas Judiciais por Tema</h3>
                     <canvas id="judicialChart" style="max-height: 350px;"></canvas>
                 </div>
 
-                <div class="mt-8 bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Resumo por Servidor</h3><div class="overflow-x-auto"><table class="w-full table-auto text-sm">
-                    <thead class="bg-gray-100 text-left">
+                <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"><h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Resumo por Servidor</h3><div class="overflow-x-auto"><table class="w-full table-auto text-sm">
+                    <thead class="bg-gray-100 dark:bg-gray-700/50 text-left">
                         <tr>
                             <th class="p-3 font-semibold">Servidor</th>
                             <th class="p-3 font-semibold">Encaminhados</th>
@@ -186,16 +397,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${desempenhoEquipe.map(e => `<tr><td class="p-3">${e.name}</td><td class="p-3">${e.sent}</td><td class="p-3">${e.completed}</td><td class="p-3">${e.inProgress}</td><td class="p-3">${e.avgDuration}</td></tr>`).join('')}
+                        ${desempenhoEquipe.map(e => `<tr class="border-b dark:border-gray-700 last:border-b-0"><td class="p-3">${e.name}</td><td class="p-3">${e.sent}</td><td class="p-3">${e.completed}</td><td class="p-3">${e.inProgress}</td><td class="p-3">${e.avgDuration}</td></tr>`).join('')}
                     </tbody>
                 </table></div></div>`;
-
-            const ausenciasHtml = (ausencias && ausencias.length > 0) ? `
-                <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-xl font-bold text-gray-700 mb-4">Férias e Ausências Programadas</h3>
+            
+            const ausenciasHtml = (ausencias && ausencias.filter(a => a.servidor).length > 0) ? `
+                <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Férias e Ausências Programadas</h3>
                     <div class="overflow-x-auto">
                         <table class="w-full table-auto text-sm">
-                            <thead class="bg-gray-100 text-left">
+                            <thead class="bg-gray-100 dark:bg-gray-700/50 text-left">
                                 <tr>
                                     <th class="p-3 font-semibold">Servidor</th>
                                     <th class="p-3 font-semibold">Motivo</th>
@@ -203,19 +414,58 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${ausencias.map(a => `<tr class="border-b last:border-b-0"><td class="p-3">${a.servidor}</td><td class="p-3">${a.motivo}</td><td class="p-3">${a.inicio} - ${a.fim}</td></tr>`).join('')}
+                                ${ausencias.filter(a => a.servidor).map(a => `<tr class="border-b dark:border-gray-700 last:border-b-0"><td class="p-3">${a.servidor}</td><td class="p-3">${a.motivo}</td><td class="p-3">${a.inicio} - ${a.fim}</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>
                 </div>` : '';
 
             container.innerHTML = kpisHtml + priorityNoteHtml + chartsAndTablesHtml + ausenciasHtml;
+            
+            // --- Criação dos Gráficos ---
 
             if (graficoMensal?.labels?.length > 0) {
-                createChart('monthlyChart', 'bar', { labels: graficoMensal.labels, datasets: [{ label: 'Processos', data: graficoMensal.data.map(d => Number(d) || 0), backgroundColor: '#6d28d9', borderRadius: 5 }] }, { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } });
+                const corNormal = '#8b5cf6'; // violet-500
+                const corDestaque = '#f59e0b'; // amber-500
+                const coresGraficoMensal = graficoMensal.labels.map(label => {
+                    return label.toLowerCase().includes('set') ? corDestaque : corNormal;
+                });
+
+                createChart('monthlyChart', 'bar', { 
+                    labels: graficoMensal.labels, 
+                    datasets: [{ 
+                        label: 'Processos', 
+                        data: graficoMensal.data.map(d => Number(d) || 0), 
+                        backgroundColor: coresGraficoMensal,
+                        borderRadius: 5 
+                    }] 
+                }, { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: {
+                        legend: { display: false }
+                    } 
+                });
             }
+
             if (desempenhoEquipe?.length > 0) {
-                createChart('employeeChart', 'bar', { labels: desempenhoEquipe.map(e => e.name), datasets: [{ label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a' }, { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a' }, { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a' }] }, { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } });
+                createChart('employeeChart', 'bar', { 
+                    labels: desempenhoEquipe.map(e => e.name), 
+                    datasets: [
+                        { label: 'Encaminhados', data: desempenhoEquipe.map(e => Number(e.sent) || 0), backgroundColor: '#3b82f6', stack: 'a', borderRadius: 5 }, 
+                        { label: 'Concluídos', data: desempenhoEquipe.map(e => Number(e.completed) || 0), backgroundColor: '#10b981', stack: 'a', borderRadius: 5 }, 
+                        { label: 'Em Andamento', data: desempenhoEquipe.map(e => Number(e.inProgress) || 0), backgroundColor: '#f59e0b', stack: 'a', borderRadius: 5 }
+                    ] 
+                }, { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    plugins: {
+                        legend: { 
+                            position: 'top'
+                        } 
+                    } 
+                });
             }
 
             if (data.graficoJudicial?.labels?.length > 0) {
@@ -234,14 +484,7 @@
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
-                        legend: { 
-                            display: false, 
-                        } 
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+                        legend: { display: false }
                     }
                 });
             }
@@ -251,13 +494,13 @@
              const container = document.getElementById('dashboard-container');
              container.innerHTML = `
                 <div class="flex justify-center space-x-4 mb-8 overflow-x-auto pb-2">
-                    <button id="sub-tab-precatorios" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg active whitespace-nowrap">Precatórios</button>
-                    <button id="sub-tab-rpvs" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">RPVs</button>
-                    <button id="sub-tab-desempenho" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Desempenho Geral</button>
-                    <button id="sub-tab-assistencia-judicial" class="sub-tab-button px-4 py-2 text-lg text-gray-500 rounded-t-lg whitespace-nowrap">Demandas da Assistência Médica</button>
+                    <button id="sub-tab-precatorios" class="sub-tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg active whitespace-nowrap">Precatórios</button>
+                    <button id="sub-tab-rpvs" class="sub-tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">RPVs</button>
+                    <button id="sub-tab-desempenho" class="sub-tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">Desempenho Geral</button>
+                    <button id="sub-tab-assistencia-judicial" class="sub-tab-button px-4 py-2 text-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 rounded-t-lg whitespace-nowrap">Demandas da Assistência Médica</button>
                 </div>
                 <div id="contencioso-content"></div>`;
-
+            
             document.getElementById('sub-tab-precatorios').addEventListener('click', () => { renderPrecatorios(data.precatorios); setActiveSubTabButtons('sub-tab-precatorios'); });
             document.getElementById('sub-tab-rpvs').addEventListener('click', () => { renderRPVs(data.rpvs); setActiveSubTabButtons('sub-tab-rpvs'); });
             document.getElementById('sub-tab-desempenho').addEventListener('click', () => { renderStandardDashboard(data, 'contencioso-content'); setActiveSubTabButtons('sub-tab-desempenho'); });
@@ -269,53 +512,63 @@
         function renderPrecatorios(d) {
             const content = document.getElementById('contencioso-content');
             if (!content) return;
+            const formatCurrency = (val) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
             content.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-check" class="text-green-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2025</h3><p class="text-3xl font-bold">${d.total2025.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2025.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-plus" class="text-blue-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2026</h3><p class="text-3xl font-bold">${d.total2026.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2026.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="calendar-x" class="text-purple-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Precatórios 2027</h3><p class="text-3xl font-bold">${d.total2027.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.total2027.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                <!-- ATUALIZADO: KPIs de Precatórios com padrões -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                     ${createKpiCard('Precatórios 2025', d.total2025.count, 'calendar-check', 'text-green-600', kpiPatterns.pagamentos, formatCurrency(d.total2025.value))}
+                     ${createKpiCard('Precatórios 2026', d.total2026.count, 'calendar-plus', 'text-blue-600', kpiPatterns.precatorio, formatCurrency(d.total2026.value))}
+                     ${createKpiCard('Precatórios 2027', d.total2027.count, 'calendar-x', 'text-purple-600', kpiPatterns.precatorio, formatCurrency(d.total2027.value))}
                 </div>
                 <div class="space-y-4">
                     ${createCollapsibleSection('precatorios-2025', 'Detalhes dos Precatórios 2025', createTableHtml(['Referência', 'Fundo'], d.list2025))}
                     ${createCollapsibleSection('precatorios-2026', 'Detalhes dos Precatórios 2026', createTableHtml(['Referência', 'Fundo'], d.list2026))}
                     ${createCollapsibleSection('precatorios-prognostico', 'Prognóstico de Novas Inscrições', createTableHtml(['Processo', 'Natureza', 'Valor', 'Fundo', 'Previsão'], d.prognostico, true))}
-                    ${createCollapsibleSection('precatorios-regras', 'Regras de Pagamento de Precatórios', `<div class="prose max-w-none mt-4 text-gray-700 leading-relaxed"><p class="font-semibold">${d.regras.cnj}</p><ul class="list-disc list-inside space-y-1">${d.regras.detalhes.map(detail => `<li>${detail}</li>`).join('')}</ul></div>`)}
+                    ${createCollapsibleSection('precatorios-regras', 'Regras de Pagamento de Precatórios', `<div class="prose max-w-none prose-sm sm:prose-base dark:prose-invert mt-4 text-gray-700 dark:text-gray-300 leading-relaxed"><p class="font-semibold">${d.regras.cnj}</p><ul class="list-disc list-inside space-y-1">${d.regras.detalhes.map(detail => `<li>${detail}</li>`).join('')}</ul></div>`)}
                 </div>`;
         }
 
         function renderRPVs(d) {
             const content = document.getElementById('contencioso-content');
             if(!content) return;
+            const formatCurrency = (val) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            
             content.innerHTML = `
+                <!-- ATUALIZADO: KPIs de RPVs com padrões -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="banknote" class="text-green-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">RPVs Pagos (2025)</h3><p class="text-3xl font-bold">${d.totalPaid.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.totalPaid.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 flex items-center space-x-4"><div data-lucide="alert-triangle" class="text-red-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">RPVs Pendentes (2025)</h3><p class="text-3xl font-bold">${d.pending.count}</p><p class="text-sm text-gray-500">Total: R$ ${d.pending.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div></div>
+                    ${createKpiCard('RPVs Pagos (2025)', d.totalPaid.count, 'banknote', 'text-green-600', kpiPatterns.pagamentos, formatCurrency(d.totalPaid.value))}
+                    ${createKpiCard('RPVs Pendentes (2025)', d.pending.count, 'alert-triangle', 'text-red-600', kpiPatterns.pendente, formatCurrency(d.pending.value))}
                 </div>
-                <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Detalhes do RPV Pendente</h3><div class="prose max-w-none text-gray-700"><p><b>Referência:</b> ${d.pending.process}</p><p><b>Motivo:</b> ${d.pending.motivo}</p><p><b>Status:</b> ${d.pending.status}</p></div></div>`;
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"><h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Detalhes do RPV Pendente</h3><div class="prose prose-sm sm:prose-base max-w-none text-gray-700 dark:text-gray-300 dark:prose-invert"><p><b>Referência:</b> ${d.pending.process}</p><p><b>Motivo:</b> ${d.pending.motivo}</p><p><b>Status:</b> ${d.pending.status}</p></div></div>`;
         }
-
+        
         function renderAssistenciaJudicial(d) {
             const content = document.getElementById('contencioso-content');
             if(!content) return;
             const totalValue = d.demandsList.reduce((sum, item) => sum + item.value, 0);
+            const formatCurrency = (val) => `R$ ${val.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            
             content.innerHTML = `
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white rounded-lg shadow-md p-6"><div class="flex items-center space-x-4"><div data-lucide="dollar-sign" class="text-red-500 w-9 h-9"></div><div><h3 class="text-xl font-semibold">Risco Total</h3><p class="text-3xl font-bold">R$ ${totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p></div></div></div>
-                    <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+                    <!-- ATUALIZADO: Card de Risco Total com padrão -->
+                    ${createKpiCard('Risco Total', formatCurrency(totalValue), 'dollar-sign', 'text-red-600', kpiPatterns.judicial)}
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 lg:col-span-2">
                         <button class="flex items-center justify-between w-full text-left" onclick="toggleCollapsible('judicial-demands-details')">
-                            <h3 class="text-xl font-bold text-gray-700">Novas Demandas Judiciais</h3>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Novas Demandas Judiciais</h3>
                             <div class="flex items-center space-x-2"><span class="text-3xl font-bold text-purple-500">${d.total}</span><div data-lucide="chevron-down" class="lucide-chevron-down text-purple-500"></div></div>
                         </button>
-                        <div id="judicial-demands-details" class="collapsible-content"><div class="prose max-w-none mt-4 text-gray-700 leading-relaxed">${d.details}</div></div>
+                        <div id="judicial-demands-details" class="collapsible-content"><div class="prose prose-sm sm:prose-base max-w-none mt-4 text-gray-700 dark:text-gray-300 dark:prose-invert leading-relaxed">${d.details}</div></div>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow-md p-6"><h3 class="text-xl font-bold text-gray-700 mb-4">Débitos Judiciais Confirmados</h3>${createTableHtml(['Descrição', 'Valor', 'Processo'], d.demandsList, true)}</div>`;
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"><h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Débitos Judiciais Confirmados</h3>${createTableHtml(['Descrição', 'Valor', 'Processo'], d.demandsList, true)}</div>`;
         }
 
         function createCollapsibleSection(id, title, content) {
-            return `<div class="bg-white rounded-lg shadow-md p-6">
+            return `<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                         <button class="flex items-center justify-between w-full text-left" onclick="toggleCollapsible('${id}')">
-                            <h3 class="text-xl font-bold text-gray-700">${title}</h3>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">${title}</h3>
                             <div data-lucide="chevron-down" class="lucide-chevron-down text-gray-500"></div>
                         </button>
                         <div id="${id}" class="collapsible-content">${content}</div>
@@ -332,11 +585,11 @@
                     }
                     return `<td class="p-3">${cell}</td>`;
                 }).join('');
-                return `<tr class="border-b border-gray-200">${cells}</tr>`;
+                return `<tr class="border-b border-gray-200 dark:border-gray-700 last:border-b-0">${cells}</tr>`;
             }).join('');
-            return `<div class="overflow-x-auto mt-4"><table class="w-full table-auto text-sm"><thead class="bg-gray-100 text-left"><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+            return `<div class="overflow-x-auto mt-4"><table class="w-full table-auto text-sm"><thead class="bg-gray-100 dark:bg-gray-700/50 text-left"><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
         }
-
+        
         function renderDashboard(sector) {
             const data = dashboardsData[sector];
             document.getElementById('painel-title').textContent = data.title;
@@ -353,7 +606,8 @@
             const loadingContainer = document.getElementById('loading-container');
             const dashboardContainer = document.getElementById('dashboard-container');
             const statusMessage = document.getElementById('status-message');
-
+            const globalNote = document.getElementById('global-system-note');
+            
             if (API_URL === "COLE_A_SUA_URL_AQUI" || !API_URL) {
                 loadingContainer.innerHTML = `<p class="text-2xl text-red-600">ERRO: URL da API não configurada.</p>`;
                 return;
@@ -366,25 +620,27 @@
                 if (apiData.error) {
                     console.error("Erro recebido do Google Script:", apiData.error);
                     statusMessage.textContent = `Erro no script da planilha: ${apiData.error}. A exibir apenas dados manuais.`;
-                    statusMessage.className = 'mt-4 text-sm font-medium text-red-600';
+                    statusMessage.className = 'mt-4 text-sm font-medium text-red-600 dark:text-red-400';
                     apiData = {};
                 } else {
                     statusMessage.textContent = `Dados atualizados em: ${new Date().toLocaleString('pt-BR')}`;
-                    statusMessage.className = 'mt-4 text-sm font-medium text-green-600';
+                    statusMessage.className = 'mt-4 text-sm font-medium text-green-600 dark:text-green-400';
                 }
-
+                
                 dashboardsData.medica = { ...manualData.medica, ...(apiData.dadosPlan1 || {}) };
                 dashboardsData.licitacao = { ...manualData.licitacao, ...(apiData.dadosPlan2 || {}) };
                 dashboardsData.previdencia = { ...manualData.previdencia, ...(apiData.dadosPlan3 || {}) };
                 dashboardsData.contencioso = { ...manualData.contencioso, ...(apiData.dadosPlan4 || {}) };
-
+                
                 loadingContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
-
+                if (globalNote) globalNote.classList.remove('hidden');
+                
                 setActiveTab('tab-medica');
-
+                
             } catch (error) {
-                loadingContainer.innerHTML = `<p class="text-2xl text-red-600">Falha ao Carregar Dados</p><p class="text-gray-600 mt-2">${error.message}</p>`;
+                loadingContainer.innerHTML = `<p class="text-2xl text-red-600">Falha ao Carregar Dados</p><p class="text-gray-600 dark:text-gray-400 mt-2">${error.message}</p>`;
+                if (globalNote) globalNote.classList.remove('hidden');
                 console.error("Erro detalhado:", error);
             }
         }
@@ -398,8 +654,9 @@
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', (e) => setActiveTab(e.target.id));
         });
-
+        
         window.addEventListener('load', init);
     </script>
 </body>
 </html>
+
